@@ -1,0 +1,18 @@
+<plugin name='session-per-conversation' version='0.1' grailsVersion='1.1.1 &gt; *'>
+  <author>Stephen Cresswell</author>
+  <authorEmail>scresswell@acuminous.co.uk</authorEmail>
+  <title>Session Per Conversation</title>
+  <description>Adds support for hibernate sessions that span multiple http requests through annotated controller actions</description>
+  <documentation>http://www.acuminous.co.uk/plugins/session-per-conversation</documentation>
+  <resources>
+    <resource>BuildConfig</resource>
+    <resource>Config</resource>
+    <resource>ConversationFilters</resource>
+    <resource>DataSource</resource>
+    <resource>UrlMappings</resource>
+    <resource>uk.co.acuminous.spc.FixtureController</resource>
+    <resource>uk.co.acuminous.spc.UserController</resource>
+    <resource>uk.co.acuminous.spc.User</resource>
+  </resources>
+  <dependencies />
+</plugin>

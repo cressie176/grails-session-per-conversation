@@ -1,0 +1,63 @@
+body {
+    font-size: 8pt;
+    font-family: verdana;
+}
+
+table {
+    border: 1px solid #ddd;
+    border-collapse: collapse;
+    width: 20em;
+    margin-bottom: 1em;
+}
+
+th {
+    border: 1px solid #ddd;    
+    padding: 1em;   
+}
+
+td.id {
+    text-align: center;
+}
+
+td.id a {
+    color: blue;
+    text-decoration: none;
+}
+
+td.delete input {
+    width: 3em;
+}
+
+td.id a:hover {
+    text-decoration: underline;
+}
+
+form {
+    width: 26em;
+    padding-left: 1em;
+}
+
+form label {
+    width: 8em;
+    display: inline-block;
+}
+
+form input {
+    width: 16em;
+    vertical-align: middle;    
+}
+
+form div {
+    margin-top: 0.2em;
+    margin-bottom: 0.2em;
+}
+
+form .buttons {
+    margin-top: 1em;
+    padding-right: 1em;    
+    text-align: right;
+}
+
+form .buttons input {
+    width: 5em;
+}
