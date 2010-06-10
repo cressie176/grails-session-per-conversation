@@ -58,7 +58,7 @@ class UserController {
     def save = {
         User user = User.get(params.id)
         user.properties = params
-        assert user.save(validate:false), user.errors
+        user.save(validate:false)
 
         commitConversation()
         forward(action: 'showTab')
