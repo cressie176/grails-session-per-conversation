@@ -42,7 +42,6 @@ class SessionPerConversationGrailsPlugin {
         'grails-app/utils/**',
         'grails-app/views/**',
         'lib/**',
-        'scripts/**',
         'web-app/**'
     ]
 
