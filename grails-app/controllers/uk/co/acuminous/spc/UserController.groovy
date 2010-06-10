@@ -60,7 +60,6 @@ class UserController {
         user.properties = params
         assert user.save(validate:false), user.errors
 
-
         commitConversation()
         forward(action: 'showTab')
     }
