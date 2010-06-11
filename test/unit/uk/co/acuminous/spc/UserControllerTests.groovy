@@ -154,7 +154,7 @@ class UserControllerTests extends ControllerUnitTestCase {
     void testThatSubmitSavesChangesToTheUser() {
         User user = setUpUser()
         String expectedUsername = 'chuck'
-        mock(user).save([flush:true]).returns(user)
+        mock(user).save().returns(user)
         
         mockTagLib('createLink', [controller: 'user', action: 'index'], '/foo')
 
@@ -172,7 +172,7 @@ class UserControllerTests extends ControllerUnitTestCase {
 
     void testThatSubmitRedirectsToTheUserListPage() {
         User user = setUpUser()
-        mock(user).save([flush:true]).returns(user)
+        mock(user).save().returns(user)
         
         String expectedUrl = '/foo'
         mockTagLib('createLink', [controller: 'user', action: 'index'], expectedUrl)
@@ -191,7 +191,7 @@ class UserControllerTests extends ControllerUnitTestCase {
     void testThatSubmitReportsValidationErrors() {
         User user = setUpUser()
 
-        mock(user).save([flush:true]).returns(false)
+        mock(user).save().returns(false)
 
         controller.params.id = user.id
         play {
