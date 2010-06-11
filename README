@@ -80,7 +80,7 @@ filter repeatedly, but the plugin supports nested conversations so there are no 
 You can also store attributes on the conversation
 
     @Conversational
-    def attributeTest = {
+    def attributeTest = {                   
         if (params.store) {
             conversationScope.foo = params.store
             render "OK"
