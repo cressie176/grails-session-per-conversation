@@ -19,7 +19,7 @@ drawbacks the developer should be aware of...
    (Entity.get(id) will still work however)
 
 3. It is common for the hibernate session to be stored in the user's HTTP session. Hibernate sessions can grow
-   quite large, and may not be closed until the user logs out. If the user does not log out, the hibernate session with
+   quite large, and may not be closed until the user logs out. If the user does not log out, the hibernate session will
    remain in the user's http session times out, and may require more memory than a request-per-session based
    application. The session-per-conversation plugin exasperates this by supporting multiple concurrent conversations
    per user.
