@@ -75,7 +75,7 @@ class UserController {
     def submit = {
         User user = User.get(params.id)
         user.properties = params
-        if (user.save(flush:true)) {
+        if (user.save()) {
             commitConversation()            
             String url = g.createLink([controller: 'user', action: 'index'])
             render(view: '/common/redirect', model: [url: url])
