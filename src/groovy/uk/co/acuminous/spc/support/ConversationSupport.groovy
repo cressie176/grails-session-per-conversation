@@ -70,7 +70,15 @@ class ConversationSupport {
             }
 
             clazz.metaClass.getConversation = { String id ->
-                return conversationManager.getConversation(id).attributes
+                return conversationManager.getConversation(id)
+            }
+
+            clazz.metaClass.getConversationScope = { ->
+                return getConversation().attributes                
+            }
+
+            clazz.metaClass.getConversationScope = { String id ->
+                return getConversation(id).attributes                
             }
 
             clazz.metaClass.getConversationManager = {

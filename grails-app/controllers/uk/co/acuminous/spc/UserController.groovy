@@ -87,10 +87,10 @@ class UserController {
     @Conversational
     def attributeTest = {
         if (params.store) {
-            conversation.foo = params.store
+            conversationScope.foo = params.store
             render "OK"
         } else {
-            render(conversation.foo)            
+            render(conversationScope.foo)            
         }
     }
 }

@@ -25,7 +25,6 @@ class ConversationManager {
 	Map<String, Conversation> conversations = [:]
     SessionFactory sessionFactory
 
-
     public synchronized Conversation start() {
         Conversation conversation = create(UUID.randomUUID().toString())
         conversation.init()

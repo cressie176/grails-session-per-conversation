@@ -142,6 +142,7 @@ class ConversationTests extends GrailsUnitTestCase {
         Session defaultSession = mock(Session)
         Conversation conversation = getCurrentConversation(mockSessionFactory, mockConversationalSession, defaultSession)
         conversation.state = ConversationState.PENDING_COMMIT
+        conversation.attributes.foo = 'bar'
 
         play {
             conversation.close()
@@ -149,6 +150,7 @@ class ConversationTests extends GrailsUnitTestCase {
 
         assertThat conversation.state, is(equalTo(ConversationState.COMMITTED))
         assertThat conversation.conversationalSession, is(nullValue())
+        assertThat conversation.attributes.isEmpty, is(true)
         assertThat sessionHolder.session, is(sameInstance(defaultSession))        
     }
 

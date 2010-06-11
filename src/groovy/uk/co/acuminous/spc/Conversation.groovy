@@ -144,6 +144,7 @@ class Conversation {
         if (conversationalSession?.isOpen()) {
             conversationalSession.close()
             conversationalSession = null
+            attributes.clear()
         } else {
 			log.warn("$token Hibernate session was already closed")            
         }
