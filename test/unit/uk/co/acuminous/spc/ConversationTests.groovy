@@ -150,7 +150,7 @@ class ConversationTests extends GrailsUnitTestCase {
 
         assertThat conversation.state, is(equalTo(ConversationState.COMMITTED))
         assertThat conversation.conversationalSession, is(nullValue())
-        assertThat conversation.attributes.isEmpty, is(true)
+        assertThat conversation.attributes.isEmpty(), is(true)
         assertThat sessionHolder.session, is(sameInstance(defaultSession))        
     }
 
