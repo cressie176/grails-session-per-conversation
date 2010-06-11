@@ -5,7 +5,7 @@ are to work with detached objects, or to implement session-per-conversation. Thi
 Hibernate's session-per-conversation (a.k.a Long Conversation) model.
 
 With session-per-conversation, the hibernate session is disconnected between requests, but remains open. It must be
-managed programatically and prevented from flushing until the final step in the process. In this way changes to the
+managed programmatically and prevented from flushing until the final step in the process. In this way changes to the
 session are buffered and committed in one final block.
 
 Session-per-conversation is generally less cumbersome than working with detached objects, but there are several
@@ -18,15 +18,15 @@ drawbacks the developer should be aware of...
 2. Since newly created entities will not be flushed to the database, they will not be returned by finder methods.
    (Entity.get(id) will still work however)
 
-3. It is common for the hibernate session to be stored in the the user's HTTP session. Hibernate sessions can grow
+3. It is common for the hibernate session to be stored in the user's HTTP session. Hibernate sessions can grow
    quite large, and may not be closed until the user logs out. If the user does not log out, the hibernate session with
    remain in the user's http session times out, and may require more memory than a request-per-session based
-   application. The session-per-conversation plugin exhasperates this by supporting multiple concurrent conversations
+   application. The session-per-conversation plugin exasperates this by supporting multiple concurrent conversations
    per user.
 
 Usage:
 
-Mark conversational actions with the Converational annotation
+Mark conversational actions with the Conversational annotation
 
     @Conversational
     def create = {
@@ -80,7 +80,7 @@ filter repeatedly, but the plugin supports nested conversations so there are no 
 You can also store attributes on the conversation
 
     @Conversational
-    def attributeTest = {                   
+    def attributeTest = {
         if (params.store) {
             conversationScope.foo = params.store
             render "OK"
@@ -92,5 +92,5 @@ You can also store attributes on the conversation
 See UserController, UserControllerTests and the Selenium Functional Tests for example usage
 
 Please note the grails bug http://jira.codehaus.org/browse/GRAILS-5745 causes the selenium tests to fail in grails 1.2
-since the entities are always validated, even if you specify entity.save(validate:false). This bug is fixed in later
-versions of grails
+since entities are always validated, even if you specify entity.save(validate:false). This bug is fixed in later
+versions of grails.
