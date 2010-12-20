@@ -42,6 +42,7 @@
       <library name="Grails User Library">
         <CLASSES>
           <root url="file://$MODULE_DIR$/lib" />
+          <root url="jar://$MODULE_DIR$/../../.ivy2/cache/org.gmock/gmock/jars/gmock-0.8.0.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
