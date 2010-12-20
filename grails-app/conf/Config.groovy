@@ -65,10 +65,9 @@ log4j = {
     // Example of changing the log pattern for the default console
     // appender:
     //
-    // appenders {
-    //    console name:'stdout', layout:pattern(conversionPattern: '%c %m%n')
-    // }
-
+    appenders {
+        console name:'stdout', layout:pattern(conversionPattern: '%t %p %c %m%n')
+    }
 
     error  'org.codehaus.groovy.grails.web.servlet',  //  controllers
 	       'org.codehaus.groovy.grails.web.pages', //  GSP
@@ -84,8 +83,10 @@ log4j = {
 
     warn   'org.mortbay.log'
 
-    debug  'uk.co.acuminous',
-            'grails.app.filters.uk.co.acuminous.spc.ConversationFilters'
+
+//    trace  'uk.co.acuminous',
+//           'grails.app.filters.uk.co.acuminous.spc.ConversationFilters'
+
 }
 
 jawr {

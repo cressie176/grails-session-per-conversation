@@ -17,57 +17,71 @@
 
 package uk.co.acuminous.spc
 
-import java.util.concurrent.ConcurrentMap
-import java.util.concurrent.ConcurrentHashMap
+import static uk.co.acuminous.spc.ConversationState.*
 import org.hibernate.SessionFactory
+import org.apache.log4j.Logger
 
 class ConversationManager {
+
+    static Logger log = Logger.getLogger(ConversationManager)
+
 	Map<String, Conversation> conversations = [:]
     SessionFactory sessionFactory
 
     public synchronized Conversation start() {
-        Conversation conversation = create(UUID.randomUUID().toString())
-        conversation.init()
-        return conversation
+        log.trace('Starting conversation')
+        Conversation conversation = new Conversation(id: UUID.randomUUID().toString(), sessionFactory: sessionFactory)
+        conversations[conversation.id] = conversation        
+        return conversation.init()
     }    
 
     public synchronized Conversation resume(String id) {
-        Conversation conversation = conversations[id] ?: create(id)
-        conversation.init()
-        return conversation
+        log.trace("Resuming conversation ${id}")
+
+        Conversation conversation = conversations[id]
+        if (conversation?.canBeResumed()) {
+            return conversation.init()
+        } else if (conversation == null) {
+            throw new ConversationNotFoundException("Cannot resume conversation $id because it does not exist")
+        } else {
+            throw new ConversationException("Cannot resume conversation $id with state ${conversation.state}")
+        }
     }
 
-    private Conversation create(String id) {
-        Conversation conversation = new Conversation(id: id, sessionFactory: sessionFactory)
-        conversations[conversation.id] = conversation
-        return conversation
+    public synchronized Conversation startOrResume(String id) {
+        return conversations[id] != null ? resume(id) : start()
+    }
+    
+    public synchronized Conversation resumeIfPossible(String id) {
+        Conversation conversation = conversations[id]
+        if (conversation?.canBeResumed()) {
+            return conversation.init()
+        } else {
+            return null
+        }
     }
 
     public synchronized Conversation getConversation(String id) {
         return conversations[id]
     }
 
-    public synchronized commit(String id) {
-        setConversationState(id, ConversationState.PENDING_COMMIT)
+    public synchronized save(String id) {
+        getConversation(id).save()
+    }    
+
+    public synchronized end(String id) {
+        getConversation(id).end()
     }
 
     public synchronized cancel(String id) {
-        setConversationState(id, ConversationState.PENDING_CANCEL)
-    }
-
-    private void setConversationState(String id, ConversationState state) {
-        Conversation conversation = conversations[id]
-        if (conversation.state != ConversationState.ACTIVE && conversation.state != state) {
-            throw new IllegalArgumentException('Conversation has already been set to cancel or commit')
-        }
-        conversation.state = state
+        getConversation(id).cancel()
     }
 
     public synchronized void close(String id) {
         if (conversations.containsKey(id)) {
             Conversation conversation = conversations[id]
             conversation.close()
-            if (conversation.state == ConversationState.COMMITTED || conversation.state == ConversationState.CANCELLED) {
+            if (conversation.state in [ENDED, CANCELLED]) {
                 conversations.remove(id)
             }
         }

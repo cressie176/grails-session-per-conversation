@@ -25,4 +25,5 @@ import java.lang.annotation.Retention
 @Target([ElementType.FIELD])
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Conversational {
+    Propagation propagation() default Propagation.REQUIRED
 }

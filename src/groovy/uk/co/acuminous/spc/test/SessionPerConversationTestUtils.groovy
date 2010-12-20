@@ -19,19 +19,17 @@ package uk.co.acuminous.spc.test
 
 import uk.co.acuminous.spc.ConversationManager
 import uk.co.acuminous.spc.ConversationManagerFactory
-import uk.co.acuminous.spc.support.ControllerConversationSupport
+import uk.co.acuminous.spc.support.ControllerSupport
 
-class ConversationalControllerTestUtils {
+class SessionPerConversationTestUtils {
 
     static void makeConversational(def controller, ConversationManager conversationManager) {
 
-        ControllerConversationSupport spcSupport = new ControllerConversationSupport()
+        ControllerSupport spcSupport = new ControllerSupport()
 
         spcSupport.conversationManagerFactory =
             [getConversationManager: { return conversationManager }] as ConversationManagerFactory
 
-        spcSupport.makeConversational(controller.class)
-        
+        spcSupport.makeConversational(controller.class)        
     }
-
 }

@@ -22,17 +22,21 @@ import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.*
 
 import org.gmock.WithGMock
-import uk.co.acuminous.spc.test.ConversationalControllerTestUtils
+import uk.co.acuminous.spc.test.SessionPerConversationTestUtils
 
 @WithGMock
 class UserControllerTests extends ControllerUnitTestCase {
 
     ConversationManager mockConversationManager
+    String conversationId = 'abc'
 
     void setUp() {
         super.setUp()
         mockConversationManager = mock(ConversationManager)
-        ConversationalControllerTestUtils.makeConversational(controller, mockConversationManager)
+        mockConversationManager.getConversation(null).returns([id: conversationId]).stub()
+        mockConversationManager.getConversation(conversationId).returns([id: conversationId]).stub()        
+
+        SessionPerConversationTestUtils.makeConversational(controller, mockConversationManager)
     }
 
     void testThatICanShowTheListOfUsers() {
@@ -61,7 +65,6 @@ class UserControllerTests extends ControllerUnitTestCase {
     void testThatISaveWhenSwitchingTabs() {
         User user = setUpUser()
         String expectedUsername = 'chuck'
-        mock(user).save([validate:false]).returns(user)
 
         controller.params.id = user.id
         controller.params.username = expectedUsername        
@@ -74,17 +77,18 @@ class UserControllerTests extends ControllerUnitTestCase {
     }
 
     void testThatICanCreate() {
-        User mockUser = mock(User, constructor())
-        mockUser.save([validate: false])
-        mockUser.id.returns(123L)
 
-        controller.params.conversationId = 'abc'
+        User user = mock(User, constructor())
+        user.save([validate:false])
+        user.id.returns(99L).stub()
+
         play {
             controller.create()
         }
 
         assertThat forwardArgs.action, is(equalTo('edit'))
-        assertThat forwardArgs.params.id, is(equalTo(123L))
+        assertThat forwardArgs.params.id, is(equalTo(99L))
+        assertThat forwardArgs.params.conversationId, is(equalTo(conversationId))        
     }
 
     void testThatICanEdit() {
@@ -94,7 +98,7 @@ class UserControllerTests extends ControllerUnitTestCase {
         controller.edit()
 
         assertThat renderArgs.view, is(equalTo('edit'))
-        assertThat renderArgs.model.user, is(equalTo(user))      
+        assertThat renderArgs.model.user, is(equalTo(user))        
     }
     
     void testThatICanDelete() {
@@ -114,13 +118,12 @@ class UserControllerTests extends ControllerUnitTestCase {
     void testThatICanSaveChangesToAUser() {
         User user = setUpUser()
         String expectedUsername = 'chuck'
-        mock(user).save([validate:false]).returns(user)
 
-        mockConversationManager.commit('abc')
+        mockConversationManager.save(conversationId)
                 
         controller.params.id = user.id        
         controller.params.username = expectedUsername
-        controller.params.conversationId = 'abc'
+        controller.params.conversationId = conversationId        
         play {
             controller.save()
         }
@@ -131,11 +134,17 @@ class UserControllerTests extends ControllerUnitTestCase {
     void testThatSaveRendersTheCurrentTab() {
         User user = setUpUser()
 
+        mockConversationManager.save(conversationId)
+
         controller.params.id = user.id
-        controller.params.tab = 'account'
-        controller.save()
+        controller.params.conversationId = conversationId
+        play {
+            controller.save()
+        }
 
         assertThat forwardArgs.action, is(equalTo('showTab'))
+        assertThat forwardArgs.params.id, is(equalTo(user.id))
+        assertThat forwardArgs.params.conversationId, is(equalTo(conversationId))
     }
 
     void testThatCancelRedirectsToTheUserListPage() {
@@ -154,15 +163,14 @@ class UserControllerTests extends ControllerUnitTestCase {
     void testThatSubmitSavesChangesToTheUser() {
         User user = setUpUser()
         String expectedUsername = 'chuck'
-        mock(user).save().returns(user)
         
         mockTagLib('createLink', [controller: 'user', action: 'index'], '/foo')
 
-        mockConversationManager.commit('abc')        
+        mockConversationManager.end(conversationId)        
 
         controller.params.id = user.id
         controller.params.username = expectedUsername
-        controller.params.conversationId = 'abc'
+        controller.params.conversationId = conversationId        
         play {
             controller.submit()
         }
@@ -172,15 +180,14 @@ class UserControllerTests extends ControllerUnitTestCase {
 
     void testThatSubmitRedirectsToTheUserListPage() {
         User user = setUpUser()
-        mock(user).save().returns(user)
         
         String expectedUrl = '/foo'
         mockTagLib('createLink', [controller: 'user', action: 'index'], expectedUrl)
 
-        mockConversationManager.commit('abc')                
+        mockConversationManager.end(conversationId)                
 
         controller.params.id = user.id
-        controller.params.conversationId = 'abc'        
+        controller.params.conversationId = conversationId        
         play {
             controller.submit()
         }
@@ -190,15 +197,17 @@ class UserControllerTests extends ControllerUnitTestCase {
 
     void testThatSubmitReportsValidationErrors() {
         User user = setUpUser()
-
-        mock(user).save().returns(false)
+        user.username = null
 
         controller.params.id = user.id
+        controller.params.conversationId = conversationId        
         play {
             controller.submit()
         }
 
         assertThat forwardArgs.action, is(equalTo('showTab'))
+        assertThat forwardArgs.params.id, is(equalTo(user.id))
+        assertThat forwardArgs.params.conversationId, is(equalTo(conversationId))        
     }
 
 

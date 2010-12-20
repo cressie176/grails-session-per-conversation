@@ -17,7 +17,6 @@
 
 package uk.co.acuminous.spc
 
-import org.hibernate.SessionFactory
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import org.hibernate.Session
@@ -27,99 +26,113 @@ import org.springframework.orm.hibernate3.SessionHolder
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.hibernate.FlushMode
 import org.apache.log4j.Logger
+import org.hibernate.SessionFactory
 
 class Conversation {
 
     static Logger log = Logger.getLogger(Conversation)
 
     String id
-    SessionFactory sessionFactory
-    Session conversationalSession
+    ConversationalSession conversationalSession
     Session defaultSession
-    Integer depth = 0
     ConversationState state
-    ConcurrentMap attributes = new ConcurrentHashMap()     
+    ConcurrentMap attributes = new ConcurrentHashMap()
+    SessionFactory sessionFactory    
 
 
-    public void init() {
-        depth++
-        if (isFirstInitialisation()) {
+    public Conversation init() {
+        if (state != ACTIVE) {
             log.debug("$token Initialising conversation")
-            useConversationalSession()
+            retainDefaultSession()
+            initConversationalSession()            
             state = ACTIVE
         } else {
-            log.debug("$token Nesting conversation ($depth)")            
+            log.debug("$token already initialised")            
         }
+        return this
     }
 
     public void close() {
-        if (isLastClose()) {
-            log.debug("$token Closing conversation")                    
+        if (state == ACTIVE) {
+            log.debug("$token Closing conversation")
             try {
-                switch (state) {
-                    case PENDING_COMMIT: commit()
-                        break
-                    case PENDING_CANCEL: cancel()
-                        break
-                    default: shelve()
-                        break
-                }
+                suspend()
             } finally {
-                disconnect()
-                useDefaultSession()
+                disconnectSession()
+                restoreDefaultSession()
             }
-        } else {
-            log.debug("$token Unnesting conversation ($depth)")            
         }
-        depth--
     }
 
-    private void commit() {
-        log.debug("$token Committing conversation")
+    public boolean canBeResumed() {
+        return state in [ACTIVE, SUSPENDED]
+    }
+
+    protected void save() {
+        log.debug("$token Saving conversation")
+        assert state == ACTIVE
         flushSession()
         commitTransaction()
         closeSession()
-        state = COMMITTED
+        initConversationalSession()
     }
 
-    private void cancel() {
+    protected void cancel() {
         log.debug("$token Cancelling conversation")
-        rollbackTransaction()
-        closeSession()
-        state = CANCELLED
-    }
+        if (state == CANCELLED) {
+            log.warn("$token Conversation has already been cancelled")
+            return
+        }
 
-    private void shelve() {
-        log.debug("$token Shelving conversation")
-        commitTransaction() // No changes because we haven't flushed       
-        state = SHELVED
-    }
-
-    private void disconnect() {
-        log.debug("$token Disconnecting session")        
-        if (conversationalSession?.isConnected()) {
-            conversationalSession.disconnect()
-        } else {
-            log.debug("$token Session was already disconnected")
+        assert state == ACTIVE        
+        try {            
+            state = CANCELLED            
+            rollbackTransaction()
+            clearSession() // Mostly unnecessary but just possible flush mode was set to AUTO
+        } finally {
+            closeSession()
+            restoreDefaultSession()
         }
     }
 
-    private void useDefaultSession() {
-        log.debug("$token Using default session")
-        SessionHolder sessionHolder = TransactionSynchronizationManager.getResource(sessionFactory)
-        sessionHolder.addSession(defaultSession)
-    }
-        
-    private void useConversationalSession() {
-        log.debug("$token Using conversational session")
-        SessionHolder sessionHolder = TransactionSynchronizationManager.getResource(sessionFactory)
-        defaultSession = sessionHolder.session
-        initConversationalSession()
-        sessionHolder.addSession(conversationalSession)
+    protected void end() {
+        log.debug("$token Committing conversation")
+
+        if (state == ENDED) {
+            log.warn("$token Conversation has already ended")
+            return
+        }
+
+        assert state == ACTIVE
+        try {
+            state = ENDED
+            flushSession()
+            commitTransaction()
+        } finally {
+            closeSession()
+            restoreDefaultSession()
+        }
     }
 
+    protected void suspend() {
+        log.debug("$token Suspending conversation")
+        commitTransaction() // Trust that nothing has been flushed      
+        state = SUSPENDED
+    }
+
+    private void retainDefaultSession() {
+        log.debug("$token Retaining default session")
+        SessionHolder sessionHolder = TransactionSynchronizationManager.getResource(sessionFactory)
+        defaultSession = sessionHolder.session
+    }
+
+    private void restoreDefaultSession() {
+        log.debug("$token Restoring default session")
+        TransactionSynchronizationManager.getResource(sessionFactory).addSession(defaultSession)
+    }        
+
     private void initConversationalSession() {
-		log.debug("$token Initialising conversational session")        
+		log.debug("$token Initialising conversational session")
         openSession()
         beginTransaction()
     }
@@ -127,16 +140,23 @@ class Conversation {
 	private void openSession() {
 		log.debug("$token Opening hibernate session")
 		if (!conversationalSession?.isOpen()) {
-			conversationalSession = new ConversationalSession(sessionFactory.openSession())
-			conversationalSession.flushMode = FlushMode.MANUAL			
+			conversationalSession = openConversationalSession()
+			conversationalSession.flushMode = FlushMode.MANUAL
 		} else {
 			log.debug("$token Hibernate session was already open")
 		}
+        TransactionSynchronizationManager.getResource(sessionFactory).addSession(conversationalSession)        
 	}
 
 	private void flushSession() {
 		log.debug("$token Flushing hibernate session")
+        conversationalSession.flushMode = FlushMode.AUTO        
 		conversationalSession.flush()
+	}
+    
+	private void clearSession() {
+		log.debug("$token Clearing hibernate session")
+		conversationalSession.clear()
 	}
 
 	private void closeSession() {
@@ -149,6 +169,15 @@ class Conversation {
 			log.warn("$token Hibernate session was already closed")            
         }
 	}
+
+    private void disconnectSession() {
+        log.debug("$token Disconnecting session")
+        if (conversationalSession?.isConnected()) {
+            conversationalSession.disconnect()
+        } else {
+            log.debug("$token Session was already disconnected")
+        }
+    }    
 
     private void beginTransaction() {
         log.debug("$token Beginning hibernate transaction")
@@ -181,11 +210,7 @@ class Conversation {
 		return "[$id/${conversationalSession?.hashCode()}]"
 	}
 
-    private boolean isFirstInitialisation() {
-        return depth == 1
-    }
-
-    private boolean isLastClose() {
-        return depth == 1        
+    private ConversationalSession openConversationalSession() {
+        return new ConversationalSession(sessionFactory.openSession()) 
     }
 }

@@ -1,3 +1,5 @@
+package uk.co.acuminous.spc
+
 /*
     This file is part of the grails session-per-conversation plugin.
 
@@ -14,15 +16,11 @@
     You should have received a copy of the Lesser GNU General Public License
     along with AppStatus.  If not, see <http://www.gnu.org/licenses/>.
 */
-
-package uk.co.acuminous.spc
-
-class FixtureController {
-
-    ConversationManager spcManager
-
-    def nuke = {
-        User.list()*.delete(flush:true)
-        render("OK")
-    }
+public enum Propagation {
+    REQUIRED,
+    REQUIRES_NEW,
+    MANDATORY,
+    SUPPORTED,
+    NOT_SUPPORTED,
+    NEVER
 }

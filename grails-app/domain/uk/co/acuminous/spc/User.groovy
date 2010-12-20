@@ -27,6 +27,7 @@ class User {
     // may result in a flush. (Oracle uses a sequence which is OK) 
     static mapping = {
         id generator: 'uuid'
+        table name: 'spc_user'
     }
 
     // Account
@@ -56,6 +57,6 @@ class User {
     }
 
     public String toString() {
-        return username
+        return "User[id=${id},version=${version},username=${username}]"
     }
 }

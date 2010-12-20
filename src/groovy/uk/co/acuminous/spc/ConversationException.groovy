@@ -17,12 +17,14 @@
 
 package uk.co.acuminous.spc
 
-class FixtureController {
+class ConversationException extends RuntimeException {
 
-    ConversationManager spcManager
-
-    def nuke = {
-        User.list()*.delete(flush:true)
-        render("OK")
+    ConversationException(String msg) {
+        super(msg)
     }
+
+    ConversationException(String msg, Throwable t) {
+        super(msg, t)
+    }
+
 }

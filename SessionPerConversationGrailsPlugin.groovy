@@ -24,14 +24,17 @@ import org.springframework.beans.factory.config.ServiceLocatorFactoryBean
 import org.codehaus.groovy.grails.commons.ControllerArtefactHandler
 import org.codehaus.groovy.grails.commons.GrailsClass
 
-import uk.co.acuminous.spc.support.ControllerConversationSupport
+import uk.co.acuminous.spc.support.ControllerSupport
+import org.codehaus.groovy.grails.commons.GrailsApplication
+import uk.co.acuminous.spc.support.ControllerSupport
+import org.codehaus.groovy.grails.commons.GrailsDomainClass
 
 class SessionPerConversationGrailsPlugin {
 
-	def loadAfter = ['controllers']
-	def observe = ['controllers']    
-    def version = "0.1"
-    def grailsVersion = "1.1.1 > *"
+	def loadAfter = ['controllers', 'hibernate']
+	def observe = ['controllers', 'hibernate']
+    def version = "0.2"
+    def grailsVersion = "1.3 > *"
     def dependsOn = [:]
     def pluginExcludes = [
         'grails-app/controllers/**',
@@ -49,7 +52,7 @@ class SessionPerConversationGrailsPlugin {
     def authorEmail = "scresswell@acuminous.co.uk"
     def title = "Session Per Conversation"
     def description = '''Adds support for hibernate sessions that span multiple http requests through annotated controller actions'''
-    def documentation = "http://www.acuminous.co.uk/plugins/session-per-conversation"
+    def documentation = "http://github.com/cressie176/grails-session-per-conversation"
 
     def doWithWebDescriptor = { xml ->
         // TODO Implement additions to web.xml (optional), this event occurs before 
@@ -65,27 +68,26 @@ class SessionPerConversationGrailsPlugin {
             serviceLocatorInterface = ConversationManagerFactory
         }
 
-        spcSupport(ControllerConversationSupport) {
+        spcControllerSupport(ControllerSupport) {
             conversationManagerFactory = ref(spcManagerFactory)
-        }        
+        }
     }
 
     def doWithDynamicMethods = { ctx ->
-        // TODO Implement registering dynamic methods to classes (optional)
     }
 
     def doWithApplicationContext = { applicationContext ->
-        ControllerConversationSupport conversationHelper = applicationContext.getBean('spcSupport')
+        ControllerSupport controllerSupport = applicationContext.getBean('spcControllerSupport')
         AH.application.controllerClasses.each { GrailsClass controllerClass ->
-            conversationHelper.makeConversational(controllerClass.clazz)
+            controllerSupport.makeConversational(controllerClass.clazz)
         }
     }
 
     def onChange = { event ->
-        ControllerConversationSupport conversationHelper = event.ctx.getBean('spcSupport')
+        ControllerSupport controllerSupport = event.ctx.getBean('spcControllerSupport')
         if (application.isArtefactOfType(ControllerArtefactHandler.TYPE, event.source)) {
 			GrailsClass controllerClass = application.getControllerClass(event.source?.name)
-            conversationHelper.makeConversational(controllerClass.clazz)
+            controllerSupport.makeConversational(controllerClass.clazz)
         }
 
     }

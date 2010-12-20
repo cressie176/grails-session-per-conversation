@@ -17,78 +17,83 @@
 
 package uk.co.acuminous.spc
 
+import static uk.co.acuminous.spc.Propagation.*
+
 class UserController {
 
+    @Conversational(propagation=NEVER)    
     def index = {
         render(view: 'index', model:[users: User.list()])
     }
 
-    @Conversational
+    @Conversational(propagation=REQUIRES_NEW)
     def create = {
         User user = new User()
         user.save(validate:false)
-
-        forward(action: 'edit', params: [id: user.id])
+        forward(action: 'edit', params: [id: user.id, conversationId: conversation.id])
     }
 
     @Conversational
     def edit = {
-        render(view: 'edit', model:[user: User.get(params.id)])
+        render(view: 'edit', model:[user: User.get(params.id)])        
     }
 
+    @Conversational(propagation=NEVER)        
     def delete = {
         User.get(params.id).delete(flush:true)
         render(template: 'userList', model: [users: User.list()])
     }
 
-    @Conversational
+    @Conversational(propagation=MANDATORY)
     def showTab = {
         render(template: "${params.tab}Tab", model:[user: User.get(params.id)])
     }
 
-    @Conversational
+    @Conversational(propagation=MANDATORY)
     def onSwitchTab = {
-        User user = User.get(params.id)
-        user.properties = params
-        assert user.save(validate:false), user.errors
+        updateUser()
         render("OK")
     }    
 
-    @Conversational
+    @Conversational(propagation=MANDATORY)
     def save = {
-        User user = User.get(params.id)
-        user.properties = params
-        user.save(validate:false)
-
-        commitConversation()
-        forward(action: 'showTab')
+        updateUser()
+        saveConversation()
+        forward(action: 'showTab', params: [tab: params.tab, id: params.id, conversationId: conversation.id])
     }
 
-    @Conversational
+    @Conversational(propagation=MANDATORY)
     def cancel = {
         cancelConversation()
+        redirectToIndexPage()
+    }
+
+    @Conversational(propagation=MANDATORY)
+    def submit = {
+        if (updateUser(true)) {
+            endConversation()
+            redirectToIndexPage()
+        } else {
+            forward(action: 'showTab', params: [tab: params.tab, id: params.id, conversationId: conversation.id])
+        }
+    }
+
+    private User updateUser(Boolean shouldValidate = false) {
+        User user = User.get(params.id)
+        user.properties = params
+        return user.save(validate:shouldValidate)
+    }
+
+    private void redirectToIndexPage() {
         String url = g.createLink([controller: 'user', action: 'index'])
         render(view: '/common/redirect', model: [url: url])
     }
 
-    @Conversational
-    def submit = {
-        User user = User.get(params.id)
-        user.properties = params
-        if (user.save()) {
-            commitConversation()            
-            String url = g.createLink([controller: 'user', action: 'index'])
-            render(view: '/common/redirect', model: [url: url])
-        } else {
-            forward(action: 'showTab')
-        }
-    }
-
-    @Conversational
+    @Conversational()
     def attributeTest = {
         if (params.store) {
             conversationScope.foo = params.store
-            render "OK"
+            render "<div id='conversationId'>${conversation.id}</div>"
         } else {
             render(conversationScope.foo)            
         }

@@ -18,10 +18,12 @@
 package uk.co.acuminous.spc.support
 
 import java.lang.reflect.Field
+import uk.co.acuminous.spc.Conversational
+import java.lang.annotation.Annotation
 
 class AnnotationTracker {
 
-    Map<String, Map<Class, List<Class>>> classMap = [:]
+    Map<String, Map<Class, List>> classMap = [:]
     List<Class> supportedAnnotations
 
     AnnotationTracker(List supportedAnnotations) {
@@ -29,7 +31,7 @@ class AnnotationTracker {
     }
 
     void recordAnnotationsOnClosures(Class target) {
-        Map<String, List<Class>> annotatedClosures = findAnnotatedClosures(target)
+        Map<String, List> annotatedClosures = findAnnotatedClosures(target)
         if (annotatedClosures) {            
             classMap[target] = annotatedClosures
         }
@@ -39,19 +41,26 @@ class AnnotationTracker {
         return classMap.containsKey(clazz)
     }
 
-    public boolean hasAnnotation(Class annotation, Class target, String closureName) {
-        Map<String, List<Class>> closureAnnotations = classMap[target] ?: [:]
-        List<Class> annotations = closureAnnotations[closureName]
-        return annotations?.contains(annotation)
+    public boolean hasAnnotation(Class annotationClass, Class target, String closureName) {
+        return getAnnotation(annotationClass, target, closureName) != null
     }
 
-    private Map<String, List<Class>> findAnnotatedClosures(Class clazz) {
+    public def getAnnotation(Class annotationClass, Class target, String closureName) {
+        Map<String, List> closureAnnotations = classMap[target] ?: [:]
+        List annotations = closureAnnotations[closureName]
+        return annotations?.find { def annotation ->
+            annotationClass.isAssignableFrom(annotation.class)
+        }
+    }
+
+    private Map<String, List> findAnnotatedClosures(Class targetClass) {
         def map = [:]
-        clazz.declaredFields.each { Field field ->
-            List fieldAnnotations = []
+        targetClass.declaredFields.each { Field field ->
+            List<Annotation> fieldAnnotations = []
             supportedAnnotations.each { Class annotationClass ->
                 if (field.isAnnotationPresent(annotationClass)) {
-                    fieldAnnotations << annotationClass
+                    Annotation annotation = field.getAnnotation(annotationClass)
+                    fieldAnnotations << annotation
                 }
             }
             if (fieldAnnotations) {

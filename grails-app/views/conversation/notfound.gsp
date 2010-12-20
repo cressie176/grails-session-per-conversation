@@ -1,3 +1,4 @@
+<%--
 /*
     This file is part of the grails session-per-conversation plugin.
 
@@ -14,15 +15,22 @@
     You should have received a copy of the Lesser GNU General Public License
     along with AppStatus.  If not, see <http://www.gnu.org/licenses/>.
 */
-
-package uk.co.acuminous.spc
-
-class FixtureController {
-
-    ConversationManager spcManager
-
-    def nuke = {
-        User.list()*.delete(flush:true)
-        render("OK")
-    }
-}
+--%>
+<g:if test="${request.xhr}">${exception.message}</g:if>
+<g:else>
+<html>
+  <head>
+    <meta name="layout" content="main" />
+    <title>Conversational Error</title>
+  </head>
+  <body id="conversationalErrorPage">
+    <div>We are unable to process your request due to one of the following reasons:</div>
+        <ul>
+            <li>Your session has expired</li>
+            <li>You have logged off from SSO</li>
+            <li>A fault with the load balancer has redirected your request to the wrong server</li>
+        </ul>
+    </div>
+  </body>
+</html>
+</g:else>

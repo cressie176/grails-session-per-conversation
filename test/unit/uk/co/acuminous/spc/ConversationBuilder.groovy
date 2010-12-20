@@ -36,7 +36,6 @@ class ConversationBuilder {
 
     Conversation build() {
         Conversation conversation = new Conversation()
-        conversation.depth = depth ?: 0
         conversation.state = state
         conversation.conversationalSession = conversationalSession
         conversation.defaultSession = defaultSession

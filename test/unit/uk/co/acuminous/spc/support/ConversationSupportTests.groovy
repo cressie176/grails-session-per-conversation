@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.*
 
 import org.gmock.WithGMock
 import uk.co.acuminous.spc.Conversational
+import uk.co.acuminous.spc.Propagation
 
 @WithGMock
 class ConversationSupportTests extends GrailsUnitTestCase {
@@ -64,6 +65,24 @@ class ConversationSupportTests extends GrailsUnitTestCase {
         mockAnnotationTracker.hasAnnotation(Conversational, Sample, 'someClosure').returns(false)
         play {
             assertThat conversationSupport.isConversational(Sample, 'someClosure'), is(false)
+        }
+    }
+    
+    void testThatICanCheckWhetherAClosureIsMandatory() {
+        Conversational mockAnnotation = mock(Conversational)
+        mockAnnotation.propagation().returns(Propagation.MANDATORY)
+        mockAnnotationTracker.getAnnotation(Conversational, Sample, 'someClosure').returns(mockAnnotation)        
+        play {
+            assertThat conversationSupport.isMandatory(Sample, 'someClosure'), is(true)
+        }
+    }
+
+    void testThatICanCheckWhetherAClosureIsNotMandatory() {
+        Conversational mockAnnotation = mock(Conversational)
+        mockAnnotation.propagation().returns(Propagation.REQUIRED)
+        mockAnnotationTracker.getAnnotation(Conversational, Sample, 'someClosure').returns(mockAnnotation)
+        play {
+            assertThat conversationSupport.isMandatory(Sample, 'someClosure'), is(false)
         }
     }
 }

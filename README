@@ -1,81 +1,138 @@
-Grails normally operates using the session-per-request, whereby it opens a new hibernate session for each http request,
-then flushing and closing the session after the request has been handled. This model works well for single page forms,
-but isn't appropriate if you want a multi page (e.g. a wizard / ajax tabs) interface. Common solutions to this problem
-are to work with detached objects, or to implement session-per-conversation. This plugin provides an implementation of
-Hibernate's session-per-conversation (a.k.a Long Conversation) model.
+IMPORTANT
+------------------------------------------------------------------------------
+Grails validation cannot be disabled [i.e. entity(validate:false) does not
+work] with session-per-conversation. This is due to
+http://jira.codehaus.org/browse/GRAILS-6947. If you need to disable validation
+while using session-per-conversation you will have to code around this problem
+manually until grails 1.4 has been released. This is the reason for the
+failing selenium tests
 
-With session-per-conversation, the hibernate session is disconnected between requests, but remains open. It must be
-managed programmatically and prevented from flushing until the final step in the process. In this way changes to the
-session are buffered and committed in one final block.
 
-Session-per-conversation is generally less cumbersome than working with detached objects, but there are several
-drawbacks the developer should be aware of...
+OVERVIEW
+------------------------------------------------------------------------------
+Grails' normal mode of operation wrt to hibernate is to follow the
+session-per-request model. Each HTTP request is blessed with a new hibernate
+session that is flushed and closed after the request has been handled. This
+model works well for single page forms, but is less suited to a wizard or
+tabbed interface that captures data over a series of requests. While
+session-per-request will still work for these scenarios, it can be difficult
+to manage rollbacks and to hide the incomplete entities from other queries.
+You may also be forced to relax integrity constraints.
 
-1. It is incompatible with auto-incrementing database column types. Depending on your dialect (e.g. MySql) grails may
-   default to using auto-incrementing column types for primary keys. Under such circumstances you must specify an
+Common solutions to this problem are to work with detached objects, to
+implement session-per-conversation (a.k.a Long Conversations) or to use a 3rd
+party framework such as WebFlow. This plugin adds support for
+session-per-conversation to Grails.
+
+With session-per-conversation, the hibernate session is disconnected between
+requests, but remains open for the entire unit of work or "conversation". The
+session must be prevented from flushing while the unit of work is in process.
+In this way changes are buffered until the end of the conversation.
+
+Session-per-conversation is generally less cumbersome than working with
+detached objects, but there are several drawbacks the developer should be
+aware of...
+
+1. It is incompatible with auto-incrementing database column types. Depending
+   on your dialect (e.g. MySql) grails may default to using auto-incrementing
+   column types for primary keys. Under such circumstances you must specify an
    alternative id generator, e.g. Sequence based or UUID.
 
-2. Since newly created entities will not be flushed to the database, they will not be returned by finder methods.
-   (Entity.get(id) will still work however)
+2. By default, Hibernate automatically flushes sessions before executing a
+   query, ensuring that the query is run against the latest data. This
+   behaviour is incompatible with session-per-conversation since it relies on
+   changes being buffered until the end of the conversation. Entity.get(id)
+   will still work however.
 
-3. It is common for the hibernate session to be stored in the user's HTTP session. Hibernate sessions can grow
-   quite large, and may not be closed until the user logs out. If the user does not log out, the hibernate session will
-   remain in the user's http session times out, and may require more memory than a request-per-session based
-   application. The session-per-conversation plugin exasperates this by supporting multiple concurrent conversations
-   per user.
+3. With session-per-conversation it is common for the hibernate session to be
+   stored in the user's HTTP session. Since the hibernate session does not
+   get closed / destroyed until the user cancels or ends their conversation,
+   or until their session is invalidated (e.g. by explicit log out or HTTP
+   session timeout), the hibernate session has potential to grow quite large
+   and hang around for far longer than with the session-per-request. This
+   can have consequences for performance and increases the chance of
+   optimistic locking exceptions.
 
-Usage:
 
-Mark conversational actions with the Conversational annotation
+USAGE
+------------------------------------------------------------------------------
+To signify that an action should take part in a conversation mark it with the
+@Conversational annotation. If a conversationId request parameter is found,
+that conversation will be retrieved from the user's HTTP session and resumed.
+If no conversationId is specified, or if the conversation no longer exists a
+new conversation will be created.
 
     @Conversational
     def create = {
         User user = new User()
-        user.save(validate:false)
+        user.save()
 
-        forward(action: 'edit', params: [id: user.id])
+        forward(action: 'view', params: [id: user.id,
+            conversationId: conversation.id])
     }
 
-If a conversationId request parameter is found, that conversation will be retrieved from the user's http session and
-resumed. If no conversationId is specified, or if the conversation no longer exists a new conversation will be created.
+ Retrieving an entity is much the same as normal, but be aware using finders,
+ criteria, HQL or SQL queries will go to the database and may bring back stale
+ data. This is normally avoided because hibernate will flush the session before
+ any such access, ensuring fresh data but with session-per-conversation flushing
+ only happens at the end of a conversation.
+
+    @Conversational
+    def view = {
+        User user = User.get(params.id)
+        render(view: 'user', model: [user: user])
+    }
+
 The conversation is added to request scope and so can be referenced in gsps, e.g.
 
     <g:hiddenField name="conversationId" value="${conversation.id}" />
 
-If you want to specify a different parameter name you can do so in Config.groovy
+If you want to specify a different parameter name you can do so from
+Config.groovy
 
     spc.token = 'cid'
 
-Committing the conversation will flush the session and close the conversation. Reusing a conversation id after the
-conversation is committed will simply start a new conversation (useful for ajax based user interfaces).
+To update bind the paramaters and call save as usual. The changes will be stored
+in the hibernate session.
 
     @Conversational
-    def submit = {
+    def update = {
+        User user = User.get(params.id)
+        user.properties = params
+        user.save()
+
+        forward(action: 'view', params: [id: user.id,
+            conversationId: conversation.id])
+    }
+
+Ending the conversation will flush the session and close the conversation.
+
+    @Conversational
+    def save = {
         User user = User.get(params.id)
         user.properties = params
         if (user.save()) {
-            commitConversation()
-            String url = g.createLink([controller: 'user', action: 'index'])
-            render(view: '/common/redirect', model: [url: url])
+            endConversation()
+            redirect(controller: 'user', action: 'index')
         } else {
-            forward(action: 'showTab')
+            forward(action: 'showTab', params:[id: user.id,
+                conversationId: conversation.id])
         }
     }
 
-Cancelling a conversation is similar to committing.
+Assuming the action has not been assigned an incompatible Propagation
+(described later) reusing a conversation id after the conversation has
+ended will simply start a new conversation (useful if the conversation
+was closed after an ajax request, so links / forms containing the old
+conversation id may still be present on the page).
+
+Cancelling a conversation is similar to ending.
 
     @Conversational
     def cancel = {
         cancelConversation()
-        String url = g.createLink([controller: 'user', action: 'index'])
-        render(view: '/common/redirect', model: [url: url])
+        redirect(controller: 'user', action: 'index')
     }
-
-In reality commitConversation() and cancelConversation() only set a flag on the conversation. It will be committed or
-rolled back after the action has completed. Because the conversation is managed through grails filters (which are run
-once only per request) you should be able to forward to other actions (conversational or not) and remain in the same
-conversation. I've notice that when grails (1.1.1) is running in development mode and auto recompiles it fires the
-filter repeatedly, but the plugin supports nested conversations so there are no side effects.
 
 You can also store attributes on the conversation
 
@@ -89,8 +146,34 @@ You can also store attributes on the conversation
         }
     }
 
-See UserController, UserControllerTests and the Selenium Functional Tests for example usage
 
-Please note the grails bug http://jira.codehaus.org/browse/GRAILS-5745 causes the selenium tests to fail in grails 1.2
-since entities are always validated, even if you specify entity.save(validate:false). This bug is fixed in later
-versions of grails.
+PROPAGATION
+------------------------------------------------------------------------------
+The intention for session-per-conversation was to make the conversation
+demarcation as unintrusive as possible. If you want to however
+you can go to town and specify Propagation values too...
+
+    @Conversation(Propagation=Propagation.MANDATORY)
+
+This will resume an existing conversation, but not create a new one.
+If no conversation exists a ConversationNotFoundException is thrown.
+If a conversation exists but has been ended or cancelled a
+ConversationException will be thrown. 
+
+Other valid Propagation values are
+
+    REQUIRED        Creates or resumes a conversation (default)
+
+    REQUIRES_NEW    Creates a conversation or throws a ConversationException
+                    if a conversation id exists
+
+    SUPPORTED       Resumes a conversation if a suspended conversation exists.
+                    Does nothing otherwise.
+
+    NOT_SUPPORTED   Suspends the current conversation for the duration of the
+                    action then resumes it after the action has returned
+                    (Experimental)
+
+    NEVER           Throws a ConversationException if a conversation id is specified
+
+See UserController, UserControllerTests and the Selenium Functional Tests for example usage.

@@ -17,12 +17,15 @@
 
 package uk.co.acuminous.spc
 
-class FixtureController {
+// Needed an explicit not found exception to highlight problems with the load balancer / sso
+class ConversationNotFoundException extends ConversationException {
 
-    ConversationManager spcManager
-
-    def nuke = {
-        User.list()*.delete(flush:true)
-        render("OK")
+    ConversationNotFoundException(String msg) {
+        super(msg)
     }
+
+    ConversationNotFoundException(String msg, Throwable t) {
+        super(msg, t)
+    }
+
 }

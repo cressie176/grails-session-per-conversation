@@ -3,7 +3,7 @@
   <authorEmail>scresswell@acuminous.co.uk</authorEmail>
   <title>Session Per Conversation</title>
   <description>Adds support for hibernate sessions that span multiple http requests through annotated controller actions</description>
-  <documentation>http://www.acuminous.co.uk/plugins/session-per-conversation</documentation>
+  <documentation>http://github.com/cressie176/grails-session-per-conversation</documentation>
   <resources>
     <resource>BuildConfig</resource>
     <resource>Config</resource>

@@ -16,19 +16,20 @@
 */
 
 
-import uk.co.acuminous.spc.support.ControllerConversationSupport
+import uk.co.acuminous.spc.support.ControllerSupport
+import org.codehaus.groovy.grails.web.servlet.mvc.GrailsWebRequest
 
 class ConversationFilters {
 
-    ControllerConversationSupport spcSupport
+    ControllerSupport spcControllerSupport
 
     def filters = {                                                                                       
         conversational(controller: '*', action: '*') {
             before = {
-                spcSupport.before(controllerName, actionName, request, params)
+                spcControllerSupport.before(controllerName, actionName, request, params)
             }
             after = {
-                spcSupport.after(controllerName, actionName, request)
+                spcControllerSupport.after(controllerName, actionName, request)
             }
         }
     }

@@ -1,3 +1,4 @@
+<%--
 /*
     This file is part of the grails session-per-conversation plugin.
 
@@ -14,15 +15,16 @@
     You should have received a copy of the Lesser GNU General Public License
     along with AppStatus.  If not, see <http://www.gnu.org/licenses/>.
 */
-
-package uk.co.acuminous.spc
-
-class FixtureController {
-
-    ConversationManager spcManager
-
-    def nuke = {
-        User.list()*.delete(flush:true)
-        render("OK")
-    }
-}
+--%>
+<g:if test="${request.xhr}">${exception.message}</g:if>
+<g:else>
+<html>
+  <head>
+    <meta name="layout" content="main" />
+    <title>Conversational Error</title>
+  </head>
+  <body id="conversationalErrorPage">
+    <div id="message">${exception.message}</div>
+  </body>
+</html>
+</g:else>

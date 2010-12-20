@@ -17,12 +17,6 @@
 
 package uk.co.acuminous.spc
 
-class FixtureController {
+class FakeException extends RuntimeException {
 
-    ConversationManager spcManager
-
-    def nuke = {
-        User.list()*.delete(flush:true)
-        render("OK")
-    }
 }

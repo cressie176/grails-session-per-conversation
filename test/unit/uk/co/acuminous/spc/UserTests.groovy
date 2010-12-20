@@ -39,7 +39,7 @@ class UserTests extends GrailsUnitTestCase {
         assertThat user.hasErrors(), is(true)
 
         FieldError error = user.errors.getFieldError(fieldName)
-        assertThat error, is(notNullValue())
+        assertThat error, is(not(nullValue()))
         assertThat error.codes as List, hasItem("${errorCode}.${fieldName}".toString())
     }
 }

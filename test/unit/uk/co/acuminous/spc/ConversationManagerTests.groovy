@@ -36,31 +36,98 @@ class ConversationManagerTests extends GrailsUnitTestCase {
     void testThatICanStartANewConversation() {
         Conversation mockConversation = mock(Conversation, constructor(any(Map)))
         mockConversation.id.returns('abc')
-        mockConversation.init()
+        mockConversation.init().returns(mockConversation)
 
         play {
             assertThat conversationManager.start(), is(sameInstance(mockConversation))
         }
         assertThat conversationManager.conversations['abc'], is(sameInstance(mockConversation))
     }
-
+    
     void testThatICanResumeAConversation() {
         Conversation mockConversation = mock(Conversation)
-        mockConversation.init()
-        
+        mockConversation.canBeResumed().returns(true)
+        mockConversation.init().returns(mockConversation)
+
         conversationManager.conversations['abc'] = mockConversation
         play {
             assertThat conversationManager.resume('abc'), is(sameInstance(mockConversation))
         }
     }
+    
+    void testThatAttemptingToResumeAnUnresumableConversationFails() {
+        Conversation mockConversation = mock(Conversation)
+        mockConversation.state.returns(ConversationState.ENDED).stub()
+        mockConversation.canBeResumed().returns(false)
 
-    void testThatResumingANonExistingOrRemovedConversationStartsANewOne() {
-        Conversation mockConversation = mock(Conversation, constructor(any(Map)))
-        mockConversation.id.returns('abc')
-        mockConversation.init()
+        conversationManager.conversations['abc'] = mockConversation
+        play {
+            shouldFail ConversationException, {
+                conversationManager.resume('abc')
+            }
+        }
+    }
+
+    void testThatICannotResumeANonExistingConversation() {
+        shouldFail ConversationNotFoundException, {
+            conversationManager.resume('abc')
+        }
+    }
+
+    void testThatStartOrResumeWillResumeAnExistingConversation() {
+        conversationManager.conversations['abc'] = new Conversation()
+
+        mock(conversationManager).resume('abc')
+        play {
+            conversationManager.startOrResume('abc')
+        }
+    }
+    
+    void testThatStartOrResumeWillStartAConversationIfNoIdIsSpecified() {
+        mock(conversationManager).start()
+        play {
+            conversationManager.startOrResume(null)
+        }
+    }
+
+    void testThatStartOrResumeWillStartAConversationIfNoConversationIsFound() {
+        mock(conversationManager).start()
+        play {
+            conversationManager.startOrResume('abc')
+        }
+    }
+
+    void testThatResumeIfPossibleInitialisesAResumableConversation() {
+        Conversation mockConversation = mock(Conversation)
+        conversationManager.conversations['abc'] = mockConversation
+
+        mockConversation.canBeResumed().returns(true)
+        mockConversation.init().returns(mockConversation)
+        
+        play {
+            assertThat conversationManager.resumeIfPossible('abc'), is(sameInstance(mockConversation))
+        }
+    }
+
+    void testThatResumeIfPossibleReturnsNullIfTheConversationCannotBeResumed() {
+        Conversation mockConversation = mock(Conversation)
+        conversationManager.conversations['abc'] = mockConversation
+        mockConversation.canBeResumed().returns(false)
 
         play {
-            assertThat conversationManager.resume('abc'), is(sameInstance(mockConversation))
+            assertThat conversationManager.resumeIfPossible('abc'), is(nullValue())
+        }        
+    }
+
+    void testThatResumeIfPossibleReturnsNullIfNoConversationIdIsSpecified() {
+        play {
+            assertThat conversationManager.resumeIfPossible(null), is(nullValue())
+        }
+    }
+
+    void testThatResumeIfPossibleReturnsNullIfTheConversationIsNotFound() {
+        play {
+            assertThat conversationManager.resumeIfPossible('abc'), is(nullValue())
         }
     }
 
@@ -68,7 +135,7 @@ class ConversationManagerTests extends GrailsUnitTestCase {
         Conversation mockConversation = mock(Conversation)
         conversationManager.conversations['abc'] = mockConversation
         mockConversation.close()
-        mockConversation.state.returns(ConversationState.SHELVED).stub()
+        mockConversation.state.returns(ConversationState.SUSPENDED).stub()
 
         play {
             conversationManager.close('abc')
@@ -77,11 +144,11 @@ class ConversationManagerTests extends GrailsUnitTestCase {
         assertThat conversationManager.conversations['abc'], is(equalTo(mockConversation))
     }
 
-    void testThatIRemoveCommittedConversationsConversation() {
+    void testThatIRemoveEndedConversationsConversation() {
         Conversation mockConversation = mock(Conversation)
         conversationManager.conversations['abc'] = mockConversation
         mockConversation.close()
-        mockConversation.state.returns(ConversationState.COMMITTED)
+        mockConversation.state.returns(ConversationState.ENDED)
 
         play {
             conversationManager.close('abc')
@@ -91,7 +158,7 @@ class ConversationManagerTests extends GrailsUnitTestCase {
     }
 
 
-    void testThatIRemoveCancelledConversationsConversation() {
+    void testThatIRemoveCancelledConversations() {
         Conversation mockConversation = mock(Conversation)
         conversationManager.conversations['abc'] = mockConversation
         mockConversation.close()
@@ -104,7 +171,7 @@ class ConversationManagerTests extends GrailsUnitTestCase {
         assertThat conversationManager.conversations.containsKey('abc'), is(false)
     }
 
-    void testThatCloseHandlesMissingConversations() {
+    void testThatCloseToleratesMissingConversations() {
         conversationManager.close('abc')        
     }
 
@@ -113,30 +180,5 @@ class ConversationManagerTests extends GrailsUnitTestCase {
         conversationManager.conversations['abc'] = conversation
 
         assertThat conversationManager.getConversation('abc'), is(sameInstance(conversation))
-    }
-
-    void testThatICannotCommitARolledBackTransaction() {
-        Conversation conversation = new Conversation(state: ConversationState.PENDING_CANCEL)
-        conversationManager.conversations['abc'] = conversation
-
-        shouldFail {
-            conversationManager.setConversationState('abc', ConversationState.PENDING_COMMIT)
-        }
-    }
-
-    void testThatICannotCancelACommittedTransaction() {
-        Conversation conversation = new Conversation(state: ConversationState.PENDING_COMMIT)
-        conversationManager.conversations['abc'] = conversation
-
-        shouldFail {
-            conversationManager.setConversationState('abc', ConversationState.PENDING_CANCEL)
-        }
-    }
-
-
-    void testThatSettingTheConversationStateToTheSameValueIsTollerated() {
-        Conversation conversation = new Conversation(state: ConversationState.PENDING_CANCEL)
-        conversationManager.conversations['abc'] = conversation
-        conversationManager.setConversationState('abc', ConversationState.PENDING_CANCEL)
     }
 }

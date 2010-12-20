@@ -19,9 +19,7 @@ package uk.co.acuminous.spc
 
 enum ConversationState {
     ACTIVE,
-    PENDING_CANCEL,
-    PENDING_COMMIT,
-    SHELVED,
-    COMMITTED,
-    CANCELLED
+    SUSPENDED,
+    CANCELLED,
+    ENDED
 }

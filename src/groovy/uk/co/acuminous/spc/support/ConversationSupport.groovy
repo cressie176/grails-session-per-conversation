@@ -20,6 +20,7 @@ package uk.co.acuminous.spc.support
 import uk.co.acuminous.spc.Conversational
 import uk.co.acuminous.spc.ConversationManagerFactory
 import uk.co.acuminous.spc.ConversationManager
+import uk.co.acuminous.spc.Propagation
 
 class ConversationSupport {
 
@@ -39,6 +40,22 @@ class ConversationSupport {
         return annotationTracker.hasAnnotation(Conversational, clazz, closureName)
     }
 
+    Propagation getPropagation(Class clazz, String closureName) {
+        return annotationTracker.getAnnotation(Conversational, clazz, closureName)?.propagation()        
+    }
+
+    boolean isMandatory(Class clazz, String closureName) {
+        return annotationTracker.getAnnotation(Conversational, clazz, closureName)?.propagation() == Propagation.MANDATORY
+    }
+
+    boolean isRequired(Class clazz, String closureName) {
+        return annotationTracker.getAnnotation(Conversational, clazz, closureName)?.propagation() == Propagation.REQUIRED
+    }
+
+    boolean isSupported(Class clazz, String closureName) {
+        return annotationTracker.getAnnotation(Conversational, clazz, closureName)?.propagation() == Propagation.SUPPORTED
+    }
+
     ConversationManager getConversationManager() {
         return conversationManagerFactory.getConversationManager()
     }
@@ -49,12 +66,20 @@ class ConversationSupport {
 
             clazz.metaClass.getConversationId = getConversationIdClosure
 
-            clazz.metaClass.commitConversation = { ->
-                commitConversation(conversationId)
+            clazz.metaClass.endConversation = { ->
+                endConversation(conversationId)
             }
 
-            clazz.metaClass.commitConversation = { String id ->
-                conversationManager.commit(id)
+            clazz.metaClass.endConversation = { String id ->
+                conversationManager.end(id)
+            }
+
+            clazz.metaClass.saveConversation = { ->
+                saveConversation(conversationId)
+            }
+
+            clazz.metaClass.saveConversation = { String id ->
+                conversationManager.save(id)
             }
 
             clazz.metaClass.cancelConversation = { ->
